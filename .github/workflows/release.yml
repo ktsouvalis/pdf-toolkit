@@ -1,0 +1,59 @@
+name: Release (Windows exe)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Set version from tag into `build/VERSION`
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v\d+\.\d+(-[\w\.]+)?$') { throw "Tag must be like v1.2 or v1.2-rc.1" }
+          $ver = $tag.TrimStart('v')
+          $baseVer = $ver.Split('-')[0]                 # e.g., 1.2
+          $build = $env:GITHUB_RUN_NUMBER
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          Set-Content -Path build/VERSION -Value "$baseVer.$build"
+          Get-Content build/VERSION
+
+      - name: Build GUI exe with PyInstaller
+        run: python build.py --no-increment
+
+      - name: Rename artifact for release
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter '*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $exe) { throw "No exe found in dist/" }
+          $out = "PDF-Toolkit-GUI-$($env:GITHUB_REF_NAME).exe"
+          Copy-Item $exe.FullName $out
+          echo "ASSET=$out" >> $env:GITHUB_ENV
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

@@ -1,0 +1,10 @@
+/*.pdf
+/.idea/
+.DS_Store
+/dist/*
+/build/*
+
+/version.py
+__pycache__/
+
+!/build/VERSION
