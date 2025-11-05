@@ -15,13 +15,17 @@ import sys
 import subprocess
 from pathlib import Path
 from datetime import datetime
+import argparse
+import shutil
 
 ROOT = Path(__file__).resolve().parent
 BUILD_DIR = ROOT / 'build'
 VERSION_FILE = BUILD_DIR / 'VERSION'
 VERSIONFILE_TXT = BUILD_DIR / 'versionfile.txt'
 DEFAULT_SPEC = 'PDF-Toolkit-GUI.spec'
-DIST_DIR = ROOT / 'dist'
+# Default Windows-specific output locations (does not affect spec if user overrides)
+DIST_DIR = ROOT / 'dist' / 'windows'
+WORK_DIR = ROOT / 'build' / 'pyi-windows'
 
 # Must be a single VSVersionInfo(...) expression; no imports or other statements.
 TEMPLATE = r"""# UTF-8
@@ -98,15 +102,18 @@ def generate_versionfile(nums, meta=None):
     print('Wrote', VERSIONFILE_TXT, 'and', version_py)
     return VERSIONFILE_TXT
 
-def run_pyinstaller(spec_path):
+def run_pyinstaller(spec_path, dist_dir=None, work_dir=None):
     # Use current interpreter to ensure correct environment
-    cmd = [sys.executable, '-m', 'PyInstaller', spec_path]
+    cmd = [sys.executable, '-m', 'PyInstaller']
+    if dist_dir:
+        cmd += ['--distpath', str(dist_dir)]
+    if work_dir:
+        cmd += ['--workpath', str(work_dir)]
+    cmd.append(spec_path)
     print('Running:', ' '.join(cmd))
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, cwd=str(ROOT))
 
 def main(argv):
-    import argparse
-    import shutil
     p = argparse.ArgumentParser()
     p.add_argument('--no-increment', action='store_true', help='Do not increment build number')
     p.add_argument('--generate-only', action='store_true', help='Only generate versionfile.txt and exit')
@@ -114,6 +121,8 @@ def main(argv):
     p.add_argument('--bump-major', action='store_true', help='Increment the major version (resets minor/patch/build to 0)')
     p.add_argument('--spec', default=DEFAULT_SPEC, help='Spec file to build')
     p.add_argument('--clean-dist', action='store_true', help='Remove the dist directory before building to avoid leftover artifacts')
+    p.add_argument('--distpath', default=str(DIST_DIR), help='Override dist output path (default: dist/windows)')
+    p.add_argument('--workpath', default=str(WORK_DIR), help='Override work path (default: build/pyi-windows)')
     args = p.parse_args(argv)
 
     if args.no_increment and (args.bump_minor or args.bump_major):
@@ -144,15 +153,18 @@ def main(argv):
         print('generate-only: exiting before building')
         return 0
 
-    if args.clean_dist and DIST_DIR.exists():
+    dist_override = Path(args.distpath)
+    work_override = Path(args.workpath)
+
+    if args.clean_dist and dist_override.exists():
         try:
-            shutil.rmtree(DIST_DIR)
-            print('Removed', DIST_DIR)
+            shutil.rmtree(dist_override)
+            print('Removed', dist_override)
         except (OSError, shutil.Error) as e:
-            print('Warning: failed to remove', DIST_DIR, '-', e)
+            print('Warning: failed to remove', dist_override, '-', e)
 
     try:
-        run_pyinstaller(args.spec)
+        run_pyinstaller(args.spec, dist_dir=dist_override, work_dir=work_override)
     except subprocess.CalledProcessError as e:
         print('PyInstaller failed with', e.returncode)
         return e.returncode

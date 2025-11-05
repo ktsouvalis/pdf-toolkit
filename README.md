@@ -123,18 +123,49 @@ Saved : 8.5 MB  (69.1% reduction)
 Build the GUI locally with PyInstaller:
 
 ```bash
-pyinstaller PDF-Toolkit-GUI.spec
+pyinstaller PDF-Toolkit-GUI.spec --distpath dist/windows --workpath build/pyi-windows
 ```
 
 Or using the helper script (Windows cmd.exe):
 
 ```cmd
-python build.py --no-increment
+python build.py --no-increment --distpath dist/windows --workpath build\pyi-windows
 ```
 
-The GUI EXE will be placed under `dist/` as a single file, with the version in its name. Example:
+The GUI EXE will be placed under `dist/windows/` as a single file, with the `-win` suffix. Example:
 
-- `PDF-Toolkit-GUI-1.2.exe`
+- `dist/windows/PDF-Toolkit-GUI-1.2-win.exe`
+
+## Build (Linux)
+
+You can build a standalone Linux binary with PyInstaller using the provided helper script. Ensure your conda/venv is active and dependencies installed:
+
+```bash
+pip install -r requirements.txt
+python build_linux.py --clean   # cleans dist/linux and build/pyi-linux
+```
+
+This will:
+- Build with `PDF-Toolkit-GUI-linux.spec`
+- Output binary to `dist/linux/` named like `PDF-Toolkit-GUI-<MAJOR>.<MINOR>-linux`
+- Create an archive `dist/PDF-Toolkit-GUI-<MAJOR>.<MINOR>-linux-<arch>.tar.gz`
+
+Run the built app:
+
+```bash
+chmod +x dist/linux/PDF-Toolkit-GUI-*-linux
+./dist/linux/PDF-Toolkit-GUI-*-linux
+```
+
+## Cross-platform note
+
+PyInstaller builds are not cross-platform:
+- Build on Windows to get a Windows `.exe`.
+- Build on Linux to get a Linux ELF binary.
+
+We isolate outputs:
+- Windows: `dist/windows`, work dir `build/pyi-windows`
+- Linux: `dist/linux`, work dir `build/pyi-linux`
 
 ## Build & versioning (automated)
 
@@ -191,7 +222,8 @@ Notes:
 New/modified files that you SHOULD commit:
 
 - `build.py` — the build helper script.
-- `PDF-Toolkit-GUI.spec` — spec used to build the GUI EXE and embed version info.
+- `build_linux.py` — Linux build helper (PyInstaller + tarball packaging).
+- `PDF-Toolkit-GUI.spec` — spec used to build the GUI and embed version info on Windows.
 - `README.md` — docs for build flags and support policy.
 - `build/VERSION` — if you want the repository to track the current build/version number (recommended for a visible baseline). If you prefer to track versions with tags/releases instead, you can avoid committing `build/VERSION` and keep it generated locally or by CI.
 
@@ -208,9 +240,15 @@ Files you should NOT commit (generated or build artifacts):
 1. Edit code. Write tests. Commit your changes.
 2. Run a local build to test:
 
+```bash
+python build_linux.py --no-increment --clean-dist  # Linux: build one-file binary + tarball
+```
+
+Or on Windows:
+
 ```cmd
 python build.py --generate-only    # generate version resources, do not build exe
 python build.py                   # bump build and run pyinstaller (GUI only)
 ```
 
-3. Test the produced exe under `dist/` (double-click to verify no console window). If everything looks good, commit `build/VERSION`, tag a release and create a PR.
+3. Test the produced binary under `dist/`. If everything looks good, commit `build/VERSION`, tag a release and create a PR.

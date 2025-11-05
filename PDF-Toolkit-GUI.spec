@@ -16,16 +16,16 @@ if _version_file.exists():
 # Base names
 _base_exe_name = 'PDF-Toolkit-GUI'
 
-# Compose EXE name as: PDF-Toolkit-GUI-<MAJOR>.<MINOR>
+# Compose EXE name as: PDF-Toolkit-GUI-<MAJOR>.<MINOR>-win
 try:
     _vparts = [int(p) for p in _version_str.split('.')]
     while len(_vparts) < 4:
         _vparts.append(0)
     _ver_main = f"{_vparts[0]}.{_vparts[1]}"
-    _exe_name = f"{_base_exe_name}-{_ver_main}"
+    _exe_name = f"{_base_exe_name}-{_ver_main}-win"
 except Exception:
     # Fallback to previous naming if parsing fails
-    _exe_name = f'{_base_exe_name}-{_version_str}'
+    _exe_name = f'{_base_exe_name}-{_version_str}-win'
 
 
 datas = []
